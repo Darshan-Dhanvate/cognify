@@ -12,7 +12,11 @@ export const createTask = async (req, res) => {
 
     if (isOverwhelming) {
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({
+          model: "gemini-flash-latest"
+        });
         const prompt = `Act as an expert productivity coach. The user is overwhelmed by the task: "${title}". 
         Break this task down into 3 extremely simple, frictionless micro-steps that take 5 minutes or less to complete. 
         Respond ONLY with a valid JSON array of objects. Do not include markdown formatting or backticks.
