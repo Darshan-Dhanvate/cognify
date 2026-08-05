@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 const microStepSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  isCompleted: { type: Boolean, default: false },
-  timeEstimate: { type: Number, default: 5 } // 5-minute rule
+  timeEstimate: { type: Number, default: 5 }, 
+  isCompleted: { type: Boolean, default: false }
 });
 
 const taskSchema = new mongoose.Schema({
@@ -14,18 +14,51 @@ const taskSchema = new mongoose.Schema({
   },
   title: { 
     type: String, 
-    required: true 
+    required: true,
+    trim: true
+  },
+  description: { 
+    type: String,
+    default: ''
+  },
+  priority: { 
+    type: String, 
+    enum: ['low', 'medium', 'high', 'critical'], 
+    default: 'medium' 
+  },
+  status: { 
+    type: String, 
+    enum: ['Pending', 'In-Progress', 'Completed'], 
+    default: 'Pending' 
   },
   isOverwhelming: { 
     type: Boolean, 
     default: false 
   },
-  status: { 
-    type: String, 
-    enum: ['Pending', 'In Progress', 'Completed'], 
-    default: 'Pending' 
+  
+  // Date-wise tracking for the calendar/timeline UI
+  dueDate: { 
+    type: Date,
+    default: Date.now
   },
-  microSteps: [microStepSchema] // AI will populate this array
+  
+  // Advanced Relational Mapping
+  parentTask: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Task', 
+    default: null 
+  },
+  
+  // AI generated array of manageable chunks
+  microSteps: [microStepSchema],
+  
+  estimatedTotalMinutes: { 
+    type: Number, 
+    default: 15 
+  },
+  completedAt: {
+    type: Date
+  }
 }, { timestamps: true });
 
 const Task = mongoose.model('Task', taskSchema);

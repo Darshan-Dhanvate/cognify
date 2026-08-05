@@ -4,6 +4,7 @@ import cors from 'cors';
 import { connectDB } from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -13,8 +14,10 @@ const app = express();
 
 // Middleware to parse JSON and handle cross-origin requests
 app.use(express.json());
+app.use('/api/auth', authRoutes);
 app.use(cors());
-app.use('/api/users', userRoutes);
+app.use('/api/users/register', userRoutes);
+app.use('/api/users/login', userRoutes);
 app.use('/api/tasks', taskRoutes);
 
 // Basic health check route
