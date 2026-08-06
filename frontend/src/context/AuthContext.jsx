@@ -1,20 +1,16 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState } from 'react';
 
 // Create the Context
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // On initial load, check if a secure token already exists in local storage
-  useEffect(() => {
-    const storedUserInfo = localStorage.getItem('userInfo');
-    if (storedUserInfo) {
-      setUser(JSON.parse(storedUserInfo));
-    }
-    setLoading(false);
-  }, []);
+  const [user, setUser] = useState(() => {
+    // Corrected to match the exact key you use when saving: 'userInfo'
+    const savedUser = localStorage.getItem('userInfo');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  
+  const [loading, setLoading] = useState(false);
 
   // Login Action
   const login = async (email, password) => {

@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } f
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Journal from './pages/Journal';
+import Calendar from './pages/Calendar';
 
 // Navigation header for Auth pages
 const AuthNav = () => (
@@ -29,6 +31,8 @@ const AppContent = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/calendar" element={<Calendar />} />
+        <Route path="/journal" element={<Journal />} />
       </Routes>
     </>
   );

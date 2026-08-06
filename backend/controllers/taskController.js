@@ -27,8 +27,8 @@ export const getTasks = async (req, res) => {
 // @access  Private (Requires JWT)
 export const createTask = async (req, res) => {
   try {
-    // Extracting all the new fields required for the advanced UI mapping
-    const { title, description, priority, dueDate, isOverwhelming } = req.body;
+    // Extracting all fields including the new targetDate and parentTask for the UI mapping
+    const { title, description, priority, targetDate, parentTask, isOverwhelming } = req.body;
     let microSteps = [];
 
     // Trigger AI Intervention Protocol if the task is flagged
@@ -67,13 +67,14 @@ export const createTask = async (req, res) => {
       }
     }
 
-    // The task gets created securely tied to the JWT user ID, regardless of AI success/failure
+    // The task gets created securely tied to the JWT user ID and mapped to the hierarchy/calendar
     const task = await Task.create({
       user: req.user._id, 
       title,
       description: description || '',
       priority: priority || 'medium',
-      dueDate: dueDate || Date.now(),
+      targetDate: targetDate || Date.now(), // Fallback to current date if none provided
+      parentTask: parentTask || null,
       isOverwhelming: isOverwhelming || false,
       microSteps
     });
