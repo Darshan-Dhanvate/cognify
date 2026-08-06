@@ -84,3 +84,63 @@ export const createTask = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Update a task (status or micro-steps)
+// @route   PUT /api/tasks/:id
+// @access  Private (Requires JWT)
+export const updateTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Security Check: Ensure the logged-in user actually owns this task
+    if (task.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized to modify this task' });
+    }
+
+    // Update the fields provided in the request
+    task.status = req.body.status || task.status;
+    task.microSteps = req.body.microSteps || task.microSteps;
+
+    // If all micro-steps are completed, automatically complete the main task
+    if (task.microSteps && task.microSteps.length > 0) {
+      const allStepsDone = task.microSteps.every(step => step.isCompleted);
+      if (allStepsDone) {
+        task.status = 'Completed';
+      }
+    }
+
+    const updatedTask = await task.save();
+    res.json(updatedTask);
+  } catch (error) {
+    console.error("Task Update Failed:", error.message);
+    res.status(500).json({ message: 'Server Error: Could not update task' });
+  }
+};
+
+// @desc    Delete a task
+// @route   DELETE /api/tasks/:id
+// @access  Private
+export const deleteTask = async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Security Check: Ensure the logged-in user actually owns this task
+    if (task.user.toString() !== req.user._id.toString()) {
+      return res.status(401).json({ message: 'Not authorized to delete this task' });
+    }
+
+    await task.deleteOne();
+    res.json({ message: 'Task permanently deleted' });
+  } catch (error) {
+    console.error("Task Deletion Failed:", error.message);
+    res.status(500).json({ message: 'Server Error: Could not delete task' });
+  }
+};

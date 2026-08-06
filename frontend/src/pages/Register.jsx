@@ -1,8 +1,10 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const Register = () => {
   const { registerUser } = useContext(AuthContext);
+  const navigate = useNavigate(); // <-- Add this
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,9 +19,7 @@ const Register = () => {
     const result = await registerUser(username, email, password);
     
     if (result.success) {
-      // Future routing: window.location.href = '/dashboard';
-      // console.log('Registration successful! Secure token generated.');
-      window.location.href = '/dashboard';
+      navigate('/dashboard'); // <-- Replaces window.location.href
     } else {
       setError(result.message);
       setIsSubmitting(false);
