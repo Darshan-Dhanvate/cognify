@@ -47,18 +47,25 @@
 }
 ```
 
-#### B. Task & Dependency Schema (`models/Task.js`)
+#### B. Advanced Task & Dependency Schema (`models/Task.js`)
 ```javascript
 {
   _id: ObjectId,
   user: { type: ObjectId, ref: 'User', required: true },
   title: { type: String, required: true },
   description: { type: String },
+  
+  // Cognitive Classification
+  taskType: { type: String, enum: ['deep-work', 'quick-task', 'strict-event'], default: 'deep-work' },
   priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
   status: { type: String, enum: ['Pending', 'In-Progress', 'Completed'], default: 'Pending' },
   isOverwhelming: { type: Boolean, default: false },
   
-  // Relational Dependencies
+  // Dual-Date Architecture
+  scheduledDate: { type: Date, default: null }, // Execution Intention
+  dueDate: { type: Date, default: null },       // Hard Deadline
+  
+  // Relational Dependencies & Roll-Ups
   parentTask: { type: ObjectId, ref: 'Task', default: null },
   dependencies: [{ type: ObjectId, ref: 'Task' }],
   
@@ -105,73 +112,55 @@
 | `POST` | `/api/auth/login` | Authenticate user & return JWT | No |
 | `GET` | `/api/tasks` | Fetch user's hierarchical task graph | Yes |
 | `POST` | `/api/tasks` | Create task & trigger Gemini AI micro-steps if `isOverwhelming` | Yes |
-| `PATCH` | `/api/tasks/:id/step` | Toggle completion status of a micro-step | Yes |
+| `PUT` | `/api/tasks/:id` | Update task status, dates, metadata, and micro-steps | Yes |
+| `DELETE`| `/api/tasks/clear` | Wipe all user tasks (Database Nuke) | Yes |
+| `DELETE`| `/api/tasks/:id` | Permanently delete a specific task | Yes |
 | `POST` | `/api/journal` | Save journal entry & trigger ML text analysis microservice | Yes |
 
-# 🚀 Project Development Roadmap & Current Status
+---
 
-## 📍 Phase 1: Command Center (Core Platform)
+## 4. Internal API Gateway (Phase 2 Blueprint)
 
+To keep the application highly performant, the Node.js Express server acts as a Gateway. It handles UI requests, standard database mutations, and authentication. For heavy computational tasks, Express relays data to the Python Brain.
+
+*   **Trigger:** User submits a cognitive journal entry via React.
+*   **Relay:** Express catches the entry and sends a `POST` request to `http://localhost:5000/analyze` (Python Service).
+*   **Compute:** Python processes the text, calculates burnout trajectories utilizing ensemble models, and returns the analytics.
+*   **Commit:** Express merges the ML insights with the journal entry and saves the complete package to MongoDB.
+
+---
+
+## 🚀 Project Development Roadmap & Current Status
+
+### 📍 Phase 1: Command Center (Core Platform)
 The Command Center forms the foundation of Cognify Engine, responsible for intelligent task management, AI-powered planning, user workflows, and data management.
 
-### ✅ Completed
-- Database architecture with optimized MongoDB schemas
-- User authentication and authorization system
-- Secure API architecture and protected routes
-- User registration and login interface
-- AI integration using Google Gemini Flash for automatic task decomposition
-- Task creation and intelligent micro-step generation
+*   ✅ Database architecture with optimized MongoDB schemas
+*   ✅ User authentication and authorization system
+*   ✅ Secure API architecture and protected routes
+*   ✅ User registration and login interface
+*   ✅ AI integration using Google Gemini for automatic task decomposition
+*   ✅ Task creation and intelligent micro-step generation
+*   ✅ Frontend execution workflow with priority roll-ups
+*   ✅ Aligned Focus Mode with Leaf-Node Isolation algorithm
+*   ✅ Dynamic Calendar & Scheduling Module (Dual-Date support)
+*   ✅ Cognitive Journaling interface
 
-### 🔄 Currently In Progress
-- Completing the frontend task execution workflow
-- Integrating task update APIs with the user interface
-- Developing the **Aligned Focus Mode** for distraction-free task execution
-
-### ⏳ Upcoming
-- Calendar and scheduling module
-- Date-wise productivity tracking
-- Daily journal and reflection interface
-- Progress analytics dashboard
-
----
-
-## 🧠 Phase 2: Analytical Engine (AI & Machine Learning)
-
+### 🧠 Phase 2: Analytical Engine (AI & Machine Learning)
 The Analytical Engine provides intelligent behavioral analysis and personalized productivity insights.
 
-### ⏳ Planned
-- Python-based AI microservice integration
-- REST API communication with the main application
-- Burnout prediction using XGBoost and LightGBM
-- NLP-based journal sentiment and cognitive analysis
-- Personalized productivity recommendations
-- Adaptive workload optimization
+*   🔄 Python-based AI microservice integration
+*   🔄 REST API communication with the main Node application
+*   ⏳ Burnout prediction using XGBoost and LightGBM ensemble models
+*   ⏳ NLP-based journal sentiment and cognitive analysis
+*   ⏳ Personalized productivity recommendations
+*   ⏳ Adaptive workload optimization
 
----
-
-## 🌍 Phase 3: 3D Cognitive Sanctuary
-
+### 🌍 Phase 3: 3D Cognitive Sanctuary
 The Cognitive Sanctuary transforms productivity data into an immersive and adaptive visual experience.
 
-### ⏳ Planned
-- Integration using React Three Fiber and Three.js
-- Interactive 3D productivity environment
-- Dynamic lighting and environmental transitions
-- Visual representation of stress and focus levels
-- Real-time synchronization with AI-generated productivity insights
-
----
-
-## 🎯 Current Project Status
-
-| Module | Status |
-|---------|--------|
-| Database Architecture | ✅ Completed |
-| Authentication System | ✅ Completed |
-| AI Task Breakdown | ✅ Completed |
-| Task Management APIs | ✅ Completed |
-| Frontend Execution Workflow | 🔄 In Progress |
-| Aligned Focus Mode | 🔄 In Progress |
-| Calendar & Journaling | ⏳ Planned |
-| AI/ML Analytical Engine | ⏳ Planned |
-| 3D Cognitive Sanctuary | ⏳ Planned |
+*   ⏳ Integration using React Three Fiber and Three.js
+*   ⏳ Interactive 3D productivity environment
+*   ⏳ Dynamic lighting and environmental transitions
+*   ⏳ Visual representation of stress and focus levels
+*   ⏳ Real-time synchronization with AI-generated productivity insights
