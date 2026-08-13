@@ -1,38 +1,121 @@
+import axios from 'axios';
 import Journal from '../models/Journal.js';
 
-// @desc    Get logged in user's journal entries
-// @route   GET /api/journals
-// @access  Private
-export const getJournals = async (req, res) => {
-  try {
-    // Fetch entries for the user, newest first
-    const journals = await Journal.find({ user: req.user._id }).sort({ createdAt: -1 });
-    res.status(200).json(journals);
-  } catch (error) {
-    console.error("Error fetching journals:", error.message);
-    res.status(500).json({ message: 'Server Error: Could not fetch journals' });
-  }
+/**
+ * @desc    Process Cognitive Journal Entry via Python ML Engine & Save to DB
+ * @route   POST /api/journal
+ * @access  Private (Requires JWT Authentication)
+ */
+export const createJournalEntry = async (req, res) => {
+    try {
+        const { content } = req.body;
+        const userId = req.user?._id;
+
+        // 1. Input Guard Clauses
+        if (!userId) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "Unauthorized: User identification missing." 
+            });
+        }
+
+        if (!content || typeof content !== 'string' || content.trim().length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Validation Error: Journal content cannot be empty." 
+            });
+        }
+
+        // 2. Dispatch HTTP Request to Python FastAPI Analytical Engine
+        let mlAnalysisPayload;
+        
+        try {
+            const pythonServiceUrl = process.env.PYTHON_ML_SERVICE_URL || 'http://localhost:5000/analyze';
+            
+            const pythonResponse = await axios.post(pythonServiceUrl, {
+                content: content.trim()
+            }, {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                timeout: 8000 // 8 second timeout threshold for ML processing
+            });
+
+            mlAnalysisPayload = pythonResponse.data;
+
+        } catch (mlError) {
+            console.error("⚠️ ML Microservice Error / Fallback Triggered:", mlError.message);
+            
+            // Safe Graceful Fallback in case Python service is restarting or unavailable
+            mlAnalysisPayload = {
+                stressScore: 50.0,
+                detectedDistortions: [],
+                suggestedReframing: "Analytical engine is temporarily re-calibrating. Entry captured successfully.",
+                moodState: "Focused",
+                burnoutRiskPercentage: 0.0,
+                isAtRisk: false
+            };
+        }
+
+        // 3. Construct Document Payload Matching Database Schema
+        const newJournalEntry = new Journal({
+            user: userId,
+            content: content.trim(),
+            psychologicalAnalysis: {
+                stressScore: mlAnalysisPayload.stressScore,
+                detectedDistortions: mlAnalysisPayload.detectedDistortions || [],
+                suggestedReframing: mlAnalysisPayload.suggestedReframing || "",
+                moodState: mlAnalysisPayload.moodState || "Focused",
+                // 🧠 Added Ensemble Predictions
+                burnoutRiskPercentage: mlAnalysisPayload.burnoutRiskPercentage || 0.0,
+                isAtRisk: mlAnalysisPayload.isAtRisk || false
+            }
+        });
+
+        // 4. Save Entry to Database
+        const savedJournal = await newJournalEntry.save();
+
+        // 5. Send Completed Response to Frontend
+        return res.status(201).json({
+            success: true,
+            data: savedJournal
+        });
+
+    } catch (error) {
+        console.error("🔴 Express Journal Controller Error:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error while creating journal entry.",
+            error: error.message 
+        });
+    }
 };
 
-// @desc    Create a new journal entry
-// @route   POST /api/journals
-// @access  Private
-export const createJournal = async (req, res) => {
-  try {
-    const { content } = req.body;
+/**
+ * @desc    Fetch User's Journal History
+ * @route   GET /api/journal
+ * @access  Private
+ */
+export const getUserJournals = async (req, res) => {
+    try {
+        const userId = req.user?._id;
 
-    if (!content) {
-      return res.status(400).json({ message: 'Journal content is required' });
+        const journals = await Journal.find({ user: userId })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return res.status(200).json({
+            success: true,
+            count: journals.length,
+            data: journals
+        });
+
+    } catch (error) {
+        console.error("🔴 Express Journal Fetch Error:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to retrieve journal entries.",
+            error: error.message 
+        });
     }
-
-    const journal = await Journal.create({
-      user: req.user._id,
-      content,
-    });
-
-    res.status(201).json(journal);
-  } catch (error) {
-    console.error("Journal Creation Failed:", error.message);
-    res.status(500).json({ message: 'Failed to create journal entry' });
-  }
 };

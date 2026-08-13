@@ -10,3 +10,7 @@ build/
 
 # OS files
 .DS_Store
+
+# Ignore Python virtual environments
+ml-engine/venv/
+__pycache__/

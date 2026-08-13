@@ -1,12 +1,20 @@
 import express from 'express';
-import { createJournal, getJournals } from '../controllers/journalController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { createJournalEntry, getUserJournals } from '../controllers/journalController.js';
+import { protect } from '../middleware/authMiddleware.js'; // Ensure your auth middleware is exported accordingly
 
 const router = express.Router();
 
-// Apply the protect middleware to secure both endpoints
+// Apply the JWT protection middleware to all routes in this file
+router.use(protect);
+
+// ---------------------------------------------------------
+// Route Definitions
+// ---------------------------------------------------------
+
 router.route('/')
-  .post(protect, createJournal)
-  .get(protect, getJournals);
+    // POST /api/journal -> Submits raw text, hits Python ML, saves to DB
+    .post(createJournalEntry)
+    // GET /api/journal -> Retrieves the user's historical journal entries
+    .get(getUserJournals);
 
 export default router;

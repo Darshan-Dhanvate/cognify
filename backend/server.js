@@ -6,6 +6,7 @@ import userRoutes from './routes/userRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
+import journalRoutes from './routes/journalRoutes.js';
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ app.use(cors());
 app.use('/api/users/register', userRoutes);
 app.use('/api/users/login', userRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api/journals', journalRoutes);
+app.use('/api/journal', journalRoutes);
 
 // Basic health check route
 app.get('/', (req, res) => {

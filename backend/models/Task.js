@@ -6,7 +6,6 @@ const taskSchema = new mongoose.Schema(
     title: { type: String, required: true },
     description: { type: String },
     
-    // NEW: Categorizing the psychological weight of the task
     taskType: { 
       type: String, 
       enum: ['deep-work', 'quick-task', 'strict-event'], 
@@ -17,13 +16,10 @@ const taskSchema = new mongoose.Schema(
     status: { type: String, enum: ['Pending', 'In-Progress', 'Completed'], default: 'Pending' },
     isOverwhelming: { type: Boolean, default: false },
     
-    // NEW: Separating Intentions from Deadlines
-    scheduledDate: { type: Date, default: null }, // The day you PLAN to do it
-    dueDate: { type: Date, default: null },       // The hard deadline (if applicable)
+    scheduledDate: { type: Date, default: null }, 
+    dueDate: { type: Date, default: null },       
     
     parentTask: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },
-    
-    // NEW: Explicit blocking dependencies
     dependencies: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
     
     microSteps: [{
@@ -33,7 +29,11 @@ const taskSchema = new mongoose.Schema(
     }],
     
     estimatedTotalMinutes: { type: Number, default: 15 },
-    completedAt: { type: Date }
+    
+    // 🧠 ML Telemetry Data
+    startedAt: { type: Date, default: null },
+    completedAt: { type: Date, default: null },
+    pushCount: { type: Number, default: 0 } // Tracks how many times scheduledDate is delayed
   },
   { timestamps: true }
 );

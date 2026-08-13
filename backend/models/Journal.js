@@ -11,7 +11,7 @@ const journalSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    // This section will be populated later by your Python ML Microservice
+    // This section will be populated by your Python ML Microservice
     psychologicalAnalysis: {
       stressScore: {
         type: Number,
@@ -29,6 +29,14 @@ const journalSchema = new mongoose.Schema(
       moodState: {
         type: String,
         enum: ['Calm', 'Anxious', 'Overwhelmed', 'Focused'],
+      },
+      // NEW: Ensemble Prediction Outputs
+      burnoutRiskPercentage: {
+        type: Number,
+      },
+      isAtRisk: {
+        type: Boolean,
+        default: false,
       },
     },
   },
