@@ -16,7 +16,8 @@ const Navbar = ({ children }) => {
   const navLinks = [
     { path: '/dashboard', label: 'Command Center' },
     { path: '/calendar', label: 'Timeline Schedule' },
-    { path: '/journal', label: 'Cognitive Journal' }
+    { path: '/journal', label: 'Cognitive Journal' },
+    { path: '/analytics', label: 'Analytics' } // Add this line
   ];
 
   return (

@@ -6,7 +6,6 @@ import userRoutes from './routes/userRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
-import journalRoutes from './routes/journalRoutes.js';
 
 dotenv.config();
 

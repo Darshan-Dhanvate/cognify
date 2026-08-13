@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Journal from './pages/Journal';
 import Calendar from './pages/Calendar';
+import Analytics from './pages/Analytics';
 
 // Navigation header for Auth pages
 const AuthNav = () => (
@@ -33,6 +34,7 @@ const AppContent = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/journal" element={<Journal />} />
+        <Route path="/analytics" element={<Analytics />} />
       </Routes>
     </>
   );

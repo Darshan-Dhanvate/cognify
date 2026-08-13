@@ -124,7 +124,7 @@
 To keep the application highly performant, the Node.js Express server acts as a Gateway. It handles UI requests, standard database mutations, and authentication. For heavy computational tasks, Express relays data to the Python Brain.
 
 *   **Trigger:** User submits a cognitive journal entry via React.
-*   **Relay:** Express catches the entry and sends a `POST` request to `http://localhost:5000/analyze` (Python Service).
+*   **Relay:** Express catches the entry and sends a `POST` request to `http://localhost:8080/analyze` (Python Service).
 *   **Compute:** Python processes the text, calculates burnout trajectories utilizing ensemble models, and returns the analytics.
 *   **Commit:** Express merges the ML insights with the journal entry and saves the complete package to MongoDB.
 
@@ -149,18 +149,18 @@ The Command Center forms the foundation of Cognify Engine, responsible for intel
 ### 🧠 Phase 2: Analytical Engine (AI & Machine Learning)
 The Analytical Engine provides intelligent behavioral analysis and personalized productivity insights.
 
-*   🔄 Python-based AI microservice integration
-*   🔄 REST API communication with the main Node application
-*   ⏳ Burnout prediction using XGBoost and LightGBM ensemble models
-*   ⏳ NLP-based journal sentiment and cognitive analysis
-*   ⏳ Personalized productivity recommendations
-*   ⏳ Adaptive workload optimization
+*   ✅ Python-based AI microservice integration
+*   ✅ REST API communication with the main Node application
+*   ✅ Burnout prediction using XGBoost and LightGBM ensemble models
+*   ✅ NLP-based journal sentiment and cognitive analysis
+*   ✅ Personalized productivity recommendations
+*   ✅ Adaptive workload optimization
 
 ### 🌍 Phase 3: 3D Cognitive Sanctuary
 The Cognitive Sanctuary transforms productivity data into an immersive and adaptive visual experience.
 
-*   ⏳ Integration using React Three Fiber and Three.js
-*   ⏳ Interactive 3D productivity environment
+*   🔄 Integration using React Three Fiber and Three.js
+*   🔄 Interactive 3D productivity environment
 *   ⏳ Dynamic lighting and environmental transitions
 *   ⏳ Visual representation of stress and focus levels
 *   ⏳ Real-time synchronization with AI-generated productivity insights

@@ -30,7 +30,8 @@ export const createJournalEntry = async (req, res) => {
         let mlAnalysisPayload;
         
         try {
-            const pythonServiceUrl = process.env.PYTHON_ML_SERVICE_URL || 'http://localhost:5000/analyze';
+            // FIXED: Changed port 5000 to 8080 to prevent conflict with Express
+            const pythonServiceUrl = process.env.PYTHON_ML_SERVICE_URL || 'http://localhost:8080/analyze';
             
             const pythonResponse = await axios.post(pythonServiceUrl, {
                 content: content.trim()
@@ -115,6 +116,38 @@ export const getUserJournals = async (req, res) => {
         return res.status(500).json({ 
             success: false, 
             message: "Failed to retrieve journal entries.",
+            error: error.message 
+        });
+    }
+};
+
+/**
+ * @desc    Delete a specific journal entry
+ * @route   DELETE /api/journal/:id
+ * @access  Private
+ */
+export const deleteJournalEntry = async (req, res) => {
+    try {
+        const journal = await Journal.findById(req.params.id);
+
+        if (!journal) {
+            return res.status(404).json({ success: false, message: 'Journal entry not found' });
+        }
+
+        // Ensure the logged-in user actually owns this journal entry
+        if (journal.user.toString() !== req.user._id.toString()) {
+            return res.status(401).json({ success: false, message: 'Not authorized to delete this entry' });
+        }
+
+        await journal.deleteOne();
+
+        return res.status(200).json({ success: true, message: 'Journal entry deleted successfully' });
+
+    } catch (error) {
+        console.error("🔴 Express Journal Deletion Error:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error while deleting journal entry.",
             error: error.message 
         });
     }

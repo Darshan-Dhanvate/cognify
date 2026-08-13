@@ -22,12 +22,10 @@ const Journal = () => {
 
   const fetchJournals = async () => {
     try {
-      // Assuming your backend has a GET route to fetch past journals
       const response = await fetch('/api/journal', {
         headers: { 'Authorization': `Bearer ${user.token}` }
       });
       const data = await response.json();
-      // Handle standard array or wrapped { data: [...] } response
       if (response.ok) setJournals(data.data || data || []);
     } catch (error) {
       console.error('Error fetching journals:', error);
@@ -54,7 +52,6 @@ const Journal = () => {
       const responseData = await response.json();
       
       if (response.ok) {
-        // Handle the nested 'data' object from your Phase 2 spec
         const newEntry = responseData.data || responseData;
         setJournals([newEntry, ...journals]);
         setContent('');
@@ -63,6 +60,25 @@ const Journal = () => {
       console.error('Error creating journal:', error);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // --- NEW: DELETE FUNCTIONALITY ---
+  const handleDeleteJournal = async (journalId) => {
+    if (!window.confirm("Permanently delete this psychological log?")) return;
+    
+    try {
+      // Optimistic UI update
+      setJournals(journals.filter(j => j._id !== journalId));
+      
+      await fetch(`/api/journal/${journalId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${user.token}` }
+      });
+    } catch (error) {
+      console.error('Error deleting journal:', error);
+      // Re-fetch if deletion fails to keep UI in sync
+      fetchJournals(); 
     }
   };
 
@@ -86,7 +102,6 @@ const Journal = () => {
 
       <main className="flex-1 max-w-7xl w-full mx-auto py-10 px-4 grid grid-cols-1 lg:grid-cols-12 gap-10 fade-in">
         
-        {/* Left Column: Input Form */}
         <div className="lg:col-span-4">
           <div className="bg-white/70 backdrop-blur-xl p-8 rounded-3xl shadow-xl shadow-teal-900/5 border border-white sticky top-10">
             <h2 className="text-xl font-extrabold text-slate-800 mb-2 tracking-tight">Log Mental State</h2>
@@ -113,7 +128,6 @@ const Journal = () => {
           </div>
         </div>
 
-        {/* Right Column: Historical Logs & Insights */}
         <div className="lg:col-span-8">
           <h2 className="text-2xl font-extrabold text-slate-800 mb-8 tracking-tight">Psychological Archive</h2>
           
@@ -127,8 +141,20 @@ const Journal = () => {
                 const analysis = journal.psychologicalAnalysis;
                 
                 return (
-                  <div key={journal._id} className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-teal-900/5 transition-all hover:shadow-2xl">
-                    <div className="flex justify-between items-start mb-6">
+                  <div key={journal._id} className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-teal-900/5 transition-all hover:shadow-2xl relative group">
+                    
+                    {/* NEW: Delete Button */}
+                    <button 
+                      onClick={() => handleDeleteJournal(journal._id)}
+                      className="absolute top-6 right-6 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded-full p-2 shadow-sm border border-slate-100"
+                      title="Delete Log"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+
+                    <div className="flex justify-between items-start mb-6 pr-10">
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                         {new Date(journal.createdAt).toLocaleString(undefined, { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -142,13 +168,11 @@ const Journal = () => {
                     
                     <p className="text-base text-slate-700 whitespace-pre-wrap leading-relaxed mb-8">{journal.content}</p>
 
-                    {/* AI Feedback Dashboard */}
                     {analysis && (
                       <div className="mt-6 pt-6 border-t border-emerald-100/60">
                         <h4 className="text-xs font-bold text-teal-600 uppercase tracking-widest mb-4">Analytical Engine Telemetry</h4>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                          {/* Burnout Risk Gauge */}
                           <div className={`p-4 rounded-2xl border ${analysis.isAtRisk ? 'bg-rose-50/50 border-rose-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
                             <span className="text-xs font-bold text-slate-500 block mb-1">Burnout Risk (Ensemble Model)</span>
                             <div className="flex items-end gap-2">
@@ -159,7 +183,6 @@ const Journal = () => {
                             </div>
                           </div>
 
-                          {/* Stress Score */}
                           <div className="p-4 rounded-2xl border bg-slate-50 border-slate-100">
                             <span className="text-xs font-bold text-slate-500 block mb-1">Stress Score (NLP)</span>
                             <span className="text-2xl font-black text-slate-700">{analysis.stressScore?.toFixed(1) || 0}</span>
@@ -167,7 +190,6 @@ const Journal = () => {
                           </div>
                         </div>
 
-                        {/* Distortions & Reframing */}
                         {analysis.detectedDistortions?.length > 0 && (
                           <div className="mb-4">
                             <span className="text-xs font-bold text-slate-500 block mb-2">Detected Cognitive Distortions</span>

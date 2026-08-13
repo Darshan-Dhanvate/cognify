@@ -1,5 +1,5 @@
 import express from 'express';
-import { createJournalEntry, getUserJournals } from '../controllers/journalController.js';
+import { createJournalEntry, getUserJournals, deleteJournalEntry } from '../controllers/journalController.js';
 import { protect } from '../middleware/authMiddleware.js'; // Ensure your auth middleware is exported accordingly
 
 const router = express.Router();
@@ -16,5 +16,9 @@ router.route('/')
     .post(createJournalEntry)
     // GET /api/journal -> Retrieves the user's historical journal entries
     .get(getUserJournals);
+
+// NEW: Added DELETE route for clearing journal cards from the UI
+router.route('/:id')
+    .delete(deleteJournalEntry);
 
 export default router;
