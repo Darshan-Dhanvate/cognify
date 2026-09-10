@@ -3,14 +3,35 @@ node_modules/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 
 # Build outputs
 dist/
 build/
 
-# OS files
+# OS and editor files
 .DS_Store
+.vscode/*.log
 
-# Ignore Python virtual environments
+# Python environments and caches
 ml-engine/venv/
+.venv/
 __pycache__/
+.pytest_cache/
+.coverage
+*.pyc
+*.pyo
+*.log
+
+# Generated ML datasets and reports
+ml-engine/data/raw/*
+ml-engine/data/processed/*
+ml-engine/data/synthetic/*
+ml-engine/reports/*.json
+ml-engine/reports/*.csv
+
+# Keep empty ML directory placeholders
+!ml-engine/data/raw/.gitkeep
+!ml-engine/data/processed/.gitkeep
+!ml-engine/data/synthetic/.gitkeep

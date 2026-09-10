@@ -1,0 +1,13 @@
+data/raw/*
+data/processed/*
+data/synthetic/*
+reports/*.json
+reports/*.csv
+__pycache__/
+.pytest_cache/
+.venv/
+
+# Keep directory placeholders
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/synthetic/.gitkeep
