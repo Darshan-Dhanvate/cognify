@@ -1,4 +1,4 @@
-const base = '[https://cognify-backend-mnbg.onrender.com/api](https://cognify-backend-mnbg.onrender.com/api)';
+const base = 'https://cognify-backend-mnbg.onrender.com/api';
 async function request(path, options = {}) {
   const token = localStorage.getItem('cognify_token');
   const response = await fetch(`${base}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers } });
