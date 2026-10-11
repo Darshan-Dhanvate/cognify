@@ -6,37 +6,38 @@ const COOLDOWN_HOURS = 24;
 export async function offerForPrediction(prediction) {
   if (!prediction || prediction.riskScore < 75) return null;
 
-  // Demo safeguard: Clear out existing pending interventions so the banner always triggers
+  // Clear pending interventions to bypass the 24-hour cooldown for your demo
   await Intervention.updateMany({ user: prediction.user, status: 'offered' }, { $set: { status: 'dismissed' } });
 
   const tasks = await Task.find({ user: prediction.user, status: { $ne: 'Completed' } }).lean();
   if (!tasks.length) return null;
 
-  // Sorting Algorithm: Rank tasks by Priority first, then by Urgency (Deadline)
   const weights = { critical: 4, high: 3, medium: 2, low: 1 };
   const sortedTasks = [...tasks].sort((a, b) => {
     const diff = (weights[b.priority] || 0) - (weights[a.priority] || 0);
-    if (diff !== 0) return diff; // Higher priority wins
-    return new Date(a.dueDate || a.scheduledDate || 0) - new Date(b.dueDate || b.scheduledDate || 0); // Closer date wins
+    if (diff !== 0) return diff; 
+    return new Date(a.dueDate || a.scheduledDate || 0) - new Date(b.dueDate || b.scheduledDate || 0); 
   });
 
   let type, recommendation;
+
+  // Find massive tasks, but IGNORE low-priority ones
+  const largeImportantTasks = tasks.filter(t => t.priority !== 'low' && ((t.estimatedTotalMinutes || 0) >= 120 || t.isOverwhelming));
 
   // 1. FOCUS MODE: Extreme risk. Pick the 2 most urgent, highest priority tasks.
   if (prediction.riskScore >= 85) {
     type = 'focus_mode';
     recommendation = { title: 'Work from an essential focus list', taskIds: sortedTasks.slice(0, 2).map(t => t._id) };
   } 
-  // 2. TASK DECOMPOSITION: Find the single largest task (>= 2 hours) and break it down.
-  else if (tasks.some(t => (t.estimatedTotalMinutes || 0) >= 120 || t.isOverwhelming)) {
+  // 2. TASK DECOMPOSITION: Only trigger if there is a massive HIGH/MEDIUM/CRITICAL task
+  else if (largeImportantTasks.length > 0) {
     type = 'task_decomposition';
-    const largestTask = [...tasks].sort((a, b) => (b.estimatedTotalMinutes || 0) - (a.estimatedTotalMinutes || 0))[0];
+    const largestTask = largeImportantTasks.sort((a, b) => (b.estimatedTotalMinutes || 0) - (a.estimatedTotalMinutes || 0))[0];
     recommendation = { title: 'Break one demanding task into smaller steps', taskIds: [largestTask._id] };
   } 
-  // 3. SCHEDULE REVIEW: Moderate risk. Pick the least critical tasks to push back.
+  // 3. SCHEDULE REVIEW: Moderate risk, or no massive important tasks exist. Push back low priority work.
   else {
     type = 'schedule_review';
-    // Reverse sort: lowest priority and furthest deadlines first
     const lowestPriorityTasks = [...tasks].sort((a, b) => {
       const diff = (weights[a.priority] || 0) - (weights[b.priority] || 0);
       if (diff !== 0) return diff; 

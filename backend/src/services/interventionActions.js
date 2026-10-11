@@ -5,13 +5,20 @@ import { recordEvent } from './events.js';
 
 async function decompose(task) {
   if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured');
-  const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({ model: 'gemini-3.8-flash' });
+  
+  const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({ model: 'gemini-1.5-flash' });
+  
   const prompt = `Break this work task into exactly 3 concrete steps, each taking 5 to 15 minutes. Return only JSON array of objects with a title field. Task: ${task.title}. Description: ${task.description || ''}`;
   const result = await model.generateContent(prompt);
   const clean = result.response.text().replace(/```json|```/g, '').trim();
   const steps = JSON.parse(clean).slice(0, 5).map(step => ({ title: String(step.title), timeEstimate: 10, isCompleted: false }));
   if (!steps.length) throw new Error('Decomposition returned no steps');
-  task.microSteps = steps; task.isOverwhelming = true; await task.save();
+  
+  await Task.updateOne(
+    { _id: task._id }, 
+    { $set: { microSteps: steps, isOverwhelming: true } }
+  );
+  
   return steps;
 }
 
@@ -24,7 +31,11 @@ export async function executeIntervention(userId, id) {
   
   let result;
   if (intervention.type === 'task_decomposition' && tasks.length > 0) {
-    result = { steps: await decompose(tasks[0]), taskId: tasks[0]._id };
+    let steps = tasks[0].microSteps;
+    if (!steps || steps.length === 0) {
+      steps = await decompose(tasks[0]);
+    }
+    result = { steps, taskId: tasks[0]._id };
   } else if (intervention.type === 'schedule_review') {
     result = { taskIds: tasks.map(task => task._id), message: 'Review these low-priority tasks before changing their dates.' };
   } else {
@@ -35,6 +46,11 @@ export async function executeIntervention(userId, id) {
   intervention.userResponseAt = new Date(); 
   await intervention.save();
   
-  await recordEvent({ user: userId, eventType: 'intervention_accepted', metadata: { interventionId: id, type: intervention.type } });
+  try {
+    await recordEvent({ user: userId, eventType: 'intervention_accepted', metadata: { interventionId: id, type: intervention.type } });
+  } catch (error) {
+    console.warn('Analytics event skipped:', error.message);
+  }
+  
   return { intervention, result };
 }
