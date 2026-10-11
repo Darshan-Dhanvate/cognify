@@ -20,33 +20,58 @@ export async function buildFeatures(userId) {
     Journal.find({ user: userId }).sort({ createdAt: -1 }).limit(50).lean(),
     User.findById(userId).select('timezone').lean(),
   ]);
+  
   const recentEvents = events;
   const created = recentEvents.filter(e => e.eventType === 'task_created').length;
   const completed = recentEvents.filter(e => e.eventType === 'task_completed').length;
   const rescheduled = recentEvents.filter(e => e.eventType === 'task_rescheduled').length;
+  
   const now = new Date();
   const timezone = user?.timezone || 'UTC';
-  
   const today = dateKey(now, timezone);
-  const tomorrowDate = new Date(now);
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrow = dateKey(tomorrowDate, timezone);
-
+  
   const overdue = tasks.filter(t => t.status !== 'Completed' && dateKey(t.dueDate || t.scheduledDate, timezone) < today).length;
   const active = tasks.filter(t => t.status !== 'Completed');
   const blocked = active.filter(t => (t.dependencies || []).length > 0).length;
+  
   const estimated = tasks.filter(t => t.createdAt >= since(7) && t.estimatedTotalMinutes > 0).map(t => t.estimatedTotalMinutes);
   const actual = tasks.filter(t => t.completedAt && new Date(t.completedAt) >= since(7) && t.startedAt).map(t => (new Date(t.completedAt) - new Date(t.startedAt)) / 60000);
   const average = values => values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  
   const latest = journals[0]?.analysis || {};
   const high = tasks.filter(t => ['high', 'critical'].includes(t.priority)).length;
   const critical = tasks.filter(t => t.priority === 'critical').length;
   
-  const scheduledToday = active.filter(t => dateKey(t.scheduledDate, timezone) === today).reduce((sum, t) => sum + (t.estimatedTotalMinutes || 0), 0);
-  const scheduledTomorrow = active.filter(t => dateKey(t.scheduledDate, timezone) === tomorrow).reduce((sum, t) => sum + (t.estimatedTotalMinutes || 0), 0);
   const completedToday = tasks.filter(t => t.status === 'Completed' && dateKey(t.completedAt, timezone) === today).reduce((sum, t) => sum + (t.estimatedTotalMinutes || 0), 0);
   const completionRate = created ? completed / created * 100 : 0;
+
+  // --- Time-Decay Deadline Pressure Logic ---
+  let upcomingPressure = 0;
+  let scheduledToday = 0;
   
+  active.forEach(t => {
+    const targetStr = dateKey(t.dueDate || t.scheduledDate, timezone);
+    if (!targetStr) return;
+    
+    // Use midday to safely calculate day differences ignoring daylight savings
+    const targetDate = new Date(`${targetStr}T12:00:00`); 
+    const todayDate = new Date(`${today}T12:00:00`);
+    const daysRemaining = Math.round((targetDate - todayDate) / 86400000);
+    
+    const mins = t.estimatedTotalMinutes || 25;
+
+    if (daysRemaining === 0) scheduledToday += mins;
+    
+    // Apply time-decay weight for tasks due within the next 7 days
+    if (daysRemaining >= 0 && daysRemaining <= 7) {
+      const weight = 1 / (daysRemaining + 1); // Today=1.0, Tmrw=0.5, Day3=0.33...
+      upcomingPressure += mins * weight;
+    }
+  });
+
+  // Assume ~8 hours (480 mins) of weighted pressure is a critical load
+  const deadlinePressure = Math.min(1, (overdue / 8 * 0.4) + (upcomingPressure / 480 * 0.6));
+
   return {
     nlpStress: Number(latest.stressScore || 0), sentimentPolarity: Number(latest.sentimentPolarity || 0),
     detectedDistortionCount: (latest.detectedDistortions || []).length, journalFrequency7d: journals.filter(j => new Date(j.createdAt) >= since(7)).length,
@@ -55,6 +80,6 @@ export async function buildFeatures(userId) {
     averageEstimatedMinutes7d: average(estimated), averageActualMinutes7d: average(actual), velocityDelta7d: average(actual) - average(estimated),
     activeTaskCount: active.length, highPriorityTaskCount: high, criticalTaskCount: critical, blockedTaskCount: blocked, dependencyFriction: blocked,
     todayScheduledMinutes: scheduledToday, todayCompletedMinutes: completedToday,
-    deadlinePressure: Math.min(1, (overdue / 8 * 0.4) + (scheduledToday / 900 * 0.4) + (scheduledTomorrow / 900 * 0.2)),
+    deadlinePressure: deadlinePressure,
   };
 }
