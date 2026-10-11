@@ -26,7 +26,12 @@ export async function buildFeatures(userId) {
   const rescheduled = recentEvents.filter(e => e.eventType === 'task_rescheduled').length;
   const now = new Date();
   const timezone = user?.timezone || 'UTC';
+  
   const today = dateKey(now, timezone);
+  const tomorrowDate = new Date(now);
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = dateKey(tomorrowDate, timezone);
+
   const overdue = tasks.filter(t => t.status !== 'Completed' && dateKey(t.dueDate || t.scheduledDate, timezone) < today).length;
   const active = tasks.filter(t => t.status !== 'Completed');
   const blocked = active.filter(t => (t.dependencies || []).length > 0).length;
@@ -36,9 +41,12 @@ export async function buildFeatures(userId) {
   const latest = journals[0]?.analysis || {};
   const high = tasks.filter(t => ['high', 'critical'].includes(t.priority)).length;
   const critical = tasks.filter(t => t.priority === 'critical').length;
+  
   const scheduledToday = active.filter(t => dateKey(t.scheduledDate, timezone) === today).reduce((sum, t) => sum + (t.estimatedTotalMinutes || 0), 0);
+  const scheduledTomorrow = active.filter(t => dateKey(t.scheduledDate, timezone) === tomorrow).reduce((sum, t) => sum + (t.estimatedTotalMinutes || 0), 0);
   const completedToday = tasks.filter(t => t.status === 'Completed' && dateKey(t.completedAt, timezone) === today).reduce((sum, t) => sum + (t.estimatedTotalMinutes || 0), 0);
   const completionRate = created ? completed / created * 100 : 0;
+  
   return {
     nlpStress: Number(latest.stressScore || 0), sentimentPolarity: Number(latest.sentimentPolarity || 0),
     detectedDistortionCount: (latest.detectedDistortions || []).length, journalFrequency7d: journals.filter(j => new Date(j.createdAt) >= since(7)).length,
@@ -47,6 +55,6 @@ export async function buildFeatures(userId) {
     averageEstimatedMinutes7d: average(estimated), averageActualMinutes7d: average(actual), velocityDelta7d: average(actual) - average(estimated),
     activeTaskCount: active.length, highPriorityTaskCount: high, criticalTaskCount: critical, blockedTaskCount: blocked, dependencyFriction: blocked,
     todayScheduledMinutes: scheduledToday, todayCompletedMinutes: completedToday,
-    deadlinePressure: Math.min(1, overdue / 8 * 0.55 + scheduledToday / 900 * 0.45),
+    deadlinePressure: Math.min(1, (overdue / 8 * 0.4) + (scheduledToday / 900 * 0.4) + (scheduledTomorrow / 900 * 0.2)),
   };
 }
