@@ -191,12 +191,95 @@ function Analytics({ risk, history, interventions, tasks }) { const completed = 
 function Empty({ text }) { return <div className="empty"><FileText size={17} /><span>{text}</span></div>; }
 
 export default function App() {
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('cognify_user') || 'null')); const [tab, setTab] = useState('overview'); const [tasks, setTasks] = useState([]); const [journals, setJournals] = useState([]); const [risk, setRisk] = useState(null); const [history, setHistory] = useState([]); const [interventions, setInterventions] = useState([]); const [intervention, setIntervention] = useState(null); const [reviewIds, setReviewIds] = useState([]); const [focusIds, setFocusIds] = useState([]); const [error, setError] = useState(''); const [mobileNav, setMobileNav] = useState(false);
+  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('cognify_user') || 'null'));
+  const [tab, setTab] = useState('overview');
+  const [tasks, setTasks] = useState([]);
+  const [journals, setJournals] = useState([]);
+  const [risk, setRisk] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [interventions, setInterventions] = useState([]);
+  const [intervention, setIntervention] = useState(null);
+  const [reviewIds, setReviewIds] = useState([]);
+  const [focusIds, setFocusIds] = useState([]);
+  const [error, setError] = useState('');
+  const [mobileNav, setMobileNav] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  async function load() { try { setError(''); const [t, j, r, h, i, ih] = await Promise.all([api.tasks(), api.journals(), api.currentRisk(), api.riskHistory(), api.currentIntervention(), api.interventionHistory()]); setTasks(t); setJournals(j); setRisk(r); setHistory(h); setIntervention(i); setInterventions(ih); setLastUpdated(new Date()); setFocusIds(i?.type === 'focus_mode' ? (i.recommendation?.taskIds || []) : []); setReviewIds(i?.type === 'schedule_review' ? (i.recommendation?.taskIds || []) : []); } catch (e) { setError(e.message); } }
+
+  async function load() {
+    try {
+      setError('');
+      const [t, j, r, h, i, ih] = await Promise.all([api.tasks(), api.journals(), api.currentRisk(), api.riskHistory(), api.currentIntervention(), api.interventionHistory()]);
+      setTasks(t); setJournals(j); setRisk(r); setHistory(h); setIntervention(i); setInterventions(ih); setLastUpdated(new Date());
+      setFocusIds(i?.type === 'focus_mode' ? (i.recommendation?.taskIds || []) : []);
+      setReviewIds(i?.type === 'schedule_review' ? (i.recommendation?.taskIds || []) : []);
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   useEffect(() => { if (user) load(); }, [user]);
-  const actions = { create: async data => { try { await api.createTask(data); await load(); } catch (e) { setError(e.message); } }, update: async (id, data) => { try { await api.updateTask(id, data); await load(); } catch (e) { setError(e.message); } }, start: async task => { try { await api.updateTask(task._id, { status: 'In-Progress' }); await load(); } catch (e) { setError(e.message); } }, complete: async task => { try { await api.updateTask(task._id, { status: 'Completed' }); await load(); } catch (e) { setError(e.message); } }, postpone: async task => { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); try { await api.updateTask(task._id, { scheduledDate: localDateInput(tomorrow) }); await load(); } catch (e) { setError(e.message); } }, remove: async task => { if (!window.confirm(`Delete "${task.title}"?`)) return; try { await api.deleteTask(task._id); await load(); } catch (e) { setError(e.message); } } };
-  async function journal(content) { try { await api.createJournal(content); await load(); } catch (e) { setError(e.message); } } async function refresh() { try { await api.recalculate('frontend_refresh'); await load(); } catch (e) { setError(e.message); } } async function respond(id, status) { try { if (status === 'accepted') { const result = await api.executeIntervention(id); setReviewIds(result.result?.taskIds || []); setFocusIds(result.result?.taskIds || []); setTab(result.intervention?.type === 'schedule_review' ? 'review' : result.intervention?.type === 'focus_mode' ? 'focus' : 'tasks'); } else await api.respondIntervention(id, status); await load(); } catch (e) { setError(e.message); } }
-  if (!user) return <Auth onLogin={setUser} />; const active = tabs.find(item => item.id === tab); const shared = { tasks, actions };
-  return <div className="app-shell"><aside className={mobileNav ? 'open' : ''}><div className="side-brand"><span className="brand-symbol">C</span><span>cognify</span></div><nav>{tabs.map(item => { const Icon = item.icon; return <button className={tab === item.id ? 'selected' : ''} key={item.id} onClick={() => { setTab(item.id); setMobileNav(false); }}><Icon size={16} /><span>{item.label}</span></button>; })}</nav><div className="side-bottom"><div className="user-chip"><span>{user.username?.slice(0, 1).toUpperCase()}</span><div><strong>{user.username}</strong><small>Personal workspace</small></div></div><button className="logout-button" onClick={() => { localStorage.clear(); setUser(null); }}><LogOut size={15} /> Sign out</button></div></aside><main className="content"><header className="topbar"><button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)}><Menu size={19} /></button><div><span className="kicker">{active?.label.toUpperCase()}</span><h1>{tab === 'overview' ? 'Good to see you.' : active?.label}</h1></div><div className="topbar-right"><span className="sync-status"><span className="signal-dot" /> synced</span></div></header>{error && <div className="notice"><ShieldAlert size={16} /><span>{error}</span><button onClick={() => setError('')}><X size={15} /></button></div>}{tab === 'overview' && <Overview {...shared} risk={risk} intervention={intervention} onRefresh={refresh} onOpen={setTab} onRespond={respond} />}{tab === 'tasks' && <TaskManager {...shared} />}{tab === 'focus' && <Focus {...shared} ids={focusIds} onExit={() => setTab('tasks')} />}{tab === 'review' && <Review {...shared} ids={reviewIds} onExit={() => setTab('overview')} />}{tab === 'calendar' && <Calendar {...shared} />}{tab === 'journal' && <Journal journals={journals} onCreate={journal} />}{tab === 'analytics' && <Analytics risk={risk} history={history} interventions={interventions} tasks={tasks} />}</main></div>;
+
+  const actions = {
+    create: async data => { try { await api.createTask(data); await load(); } catch (e) { setError(e.message); } },
+    update: async (id, data) => { try { await api.updateTask(id, data); await load(); } catch (e) { setError(e.message); } },
+    start: async task => { try { await api.updateTask(task._id, { status: 'In-Progress' }); await load(); } catch (e) { setError(e.message); } },
+    complete: async task => { try { await api.updateTask(task._id, { status: 'Completed' }); await load(); } catch (e) { setError(e.message); } },
+    postpone: async task => { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); try { await api.updateTask(task._id, { scheduledDate: localDateInput(tomorrow) }); await load(); } catch (e) { setError(e.message); } },
+    remove: async task => { if (!window.confirm(`Delete "${task.title}"?`)) return; try { await api.deleteTask(task._id); await load(); } catch (e) { setError(e.message); } }
+  };
+
+  async function journal(content) { try { await api.createJournal(content); await load(); } catch (e) { setError(e.message); } }
+  async function refresh() { try { await api.recalculate('frontend_refresh'); await load(); } catch (e) { setError(e.message); } }
+  
+  // FIX APPLIED HERE: load() runs before setting the tab and IDs
+  async function respond(id, status) {
+    try {
+      if (status === 'accepted') {
+        const result = await api.executeIntervention(id);
+        
+        await load(); 
+        
+        setReviewIds(result.result?.taskIds || []);
+        setFocusIds(result.result?.taskIds || []);
+        setTab(result.intervention?.type === 'schedule_review' ? 'review' : result.intervention?.type === 'focus_mode' ? 'focus' : 'tasks');
+      } else {
+        await api.respondIntervention(id, status);
+        await load();
+      }
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  if (!user) return <Auth onLogin={setUser} />;
+  const active = tabs.find(item => item.id === tab);
+  const shared = { tasks, actions };
+
+  return (
+    <div className="app-shell">
+      <aside className={mobileNav ? 'open' : ''}>
+        <div className="side-brand"><span className="brand-symbol">C</span><span>cognify</span></div>
+        <nav>{tabs.map(item => { const Icon = item.icon; return <button className={tab === item.id ? 'selected' : ''} key={item.id} onClick={() => { setTab(item.id); setMobileNav(false); }}><Icon size={16} /><span>{item.label}</span></button>; })}</nav>
+        <div className="side-bottom">
+          <div className="user-chip"><span>{user.username?.slice(0, 1).toUpperCase()}</span><div><strong>{user.username}</strong><small>Personal workspace</small></div></div>
+          <button className="logout-button" onClick={() => { localStorage.clear(); setUser(null); }}><LogOut size={15} /> Sign out</button>
+        </div>
+      </aside>
+      <main className="content">
+        <header className="topbar">
+          <button className="mobile-menu" onClick={() => setMobileNav(!mobileNav)}><Menu size={19} /></button>
+          <div><span className="kicker">{active?.label.toUpperCase()}</span><h1>{tab === 'overview' ? 'Good to see you.' : active?.label}</h1></div>
+          <div className="topbar-right"><span className="sync-status"><span className="signal-dot" /> synced</span></div>
+        </header>
+        {error && <div className="notice"><ShieldAlert size={16} /><span>{error}</span><button onClick={() => setError('')}><X size={15} /></button></div>}
+        {tab === 'overview' && <Overview {...shared} risk={risk} intervention={intervention} onRefresh={refresh} onOpen={setTab} onRespond={respond} />}
+        {tab === 'tasks' && <TaskManager {...shared} />}
+        {tab === 'focus' && <Focus {...shared} ids={focusIds} onExit={() => setTab('tasks')} />}
+        {tab === 'review' && <Review {...shared} ids={reviewIds} onExit={() => setTab('overview')} />}
+        {tab === 'calendar' && <Calendar {...shared} />}
+        {tab === 'journal' && <Journal journals={journals} onCreate={journal} />}
+        {tab === 'analytics' && <Analytics risk={risk} history={history} interventions={interventions} tasks={tasks} />}
+      </main>
+    </div>
+  );
 }
