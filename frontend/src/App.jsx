@@ -20,7 +20,68 @@ function Auth({ onLogin }) {
 
 function RiskCard({ risk, onRefresh }) { const score = risk?.riskScore; const level = risk?.riskLevel || 'insufficient data'; const tone = level === 'critical' || level === 'high' ? 'risk-high' : level === 'elevated' ? 'risk-mid' : 'risk-low'; const display = value => typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value; return <section className={`risk-card ${tone}`}><div className="card-topline"><span className="kicker">CURRENT LOAD ESTIMATE</span><button className="icon-button" title="Refresh estimate" onClick={onRefresh}><RefreshCw size={16} /></button></div><div className="risk-value">{score == null ? '—' : `${Number(score).toFixed(1)}%`}</div><div className="risk-level">{score == null ? 'Building your baseline' : `${level} risk`}</div>{score != null && <div className="risk-meter"><span style={{ width: `${Math.min(100, Math.max(0, score))}%` }} /></div>}<p>{score == null ? 'Complete a few tasks or an optional check-in to build a personal signal.' : 'An estimate from recent task activity and optional journal signals.'}</p>{risk?.topFactors?.length > 0 && <div className="factor-list"><div className="factor-heading">Top signals</div>{risk.topFactors.slice(0, 3).map(f => <span key={f.feature}><b>{f.label}</b><small>{display(f.value)}</small></span>)}</div>}</section>; }
 
-function TaskRow({ task, onStart, onComplete, onPostpone, onEdit, onDelete, compact = false }) { const [menuOpen, setMenuOpen] = useState(false); const menuRef = useRef(null); const completed = task.status === 'Completed'; const started = task.status === 'In-Progress'; const dueKey = dateKey(task.dueDate || task.scheduledDate); const overdue = !completed && dueKey && dueKey < todayKey(); const needsReschedule = overdue && !started; useEffect(() => { if (!menuOpen) return undefined; const close = event => { if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false); }; document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close); }, [menuOpen]); return <div className="task-row"><div className="task-copy"><strong>{task.title}</strong><span>{task.priority || 'medium'} {task.estimatedTotalMinutes ? `· ${task.estimatedTotalMinutes} min` : ''}{task.scheduledDate ? ` · ${formatDate(task.scheduledDate)}` : ''}{overdue ? ' · overdue' : ''}</span></div>{!compact && <span className={`status-pill status-${task.status.toLowerCase().replace('-', '')}${overdue ? ' status-overdue' : ''}`}>{overdue ? 'Overdue' : task.status}</span>}{!compact && !completed && <div className="task-actions"><button className="task-primary-action" onClick={() => needsReschedule ? onPostpone(task) : started ? onComplete(task) : onStart(task)}>{needsReschedule ? 'Reschedule' : started ? <><Check size={13} /> Complete</> : <>Start</>}</button><div className="task-menu-wrap" ref={menuRef}><button className="icon-button light" title="More task actions" aria-label={`More actions for ${task.title}`} onClick={() => setMenuOpen(!menuOpen)}><MoreHorizontal size={17} /></button>{menuOpen && <div className="task-menu"><button onClick={() => { setMenuOpen(false); onPostpone(task); }}>Reschedule to tomorrow</button><button onClick={() => { setMenuOpen(false); onEdit(task); }}>Edit task</button><button className="danger" onClick={() => { setMenuOpen(false); onDelete(task); }}>Delete task</button></div>}</div></div>}{!compact && completed && <span className="completed-mark"><Check size={14} /> Done</span>}</div>; }
+function TaskRow({ task, onStart, onComplete, onPostpone, onEdit, onDelete, compact = false }) { 
+  const [menuOpen, setMenuOpen] = useState(false); 
+  const menuRef = useRef(null); 
+  const completed = task.status === 'Completed'; 
+  const started = task.status === 'In-Progress'; 
+  const dueKey = dateKey(task.dueDate || task.scheduledDate); 
+  const overdue = !completed && dueKey && dueKey < todayKey(); 
+  const needsReschedule = overdue && !started; 
+  
+  useEffect(() => { 
+    if (!menuOpen) return undefined; 
+    const close = event => { if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false); }; 
+    document.addEventListener('mousedown', close); 
+    return () => document.removeEventListener('mousedown', close); 
+  }, [menuOpen]); 
+  
+  return (
+    <div className="task-row" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+        <div className="task-copy">
+          <strong>{task.title}</strong>
+          <span>{task.priority || 'medium'} {task.estimatedTotalMinutes ? `· ${task.estimatedTotalMinutes} min` : ''}{task.scheduledDate ? ` · ${formatDate(task.scheduledDate)}` : ''}{overdue ? ' · overdue' : ''}</span>
+        </div>
+        {!compact && <span className={`status-pill status-${task.status.toLowerCase().replace('-', '')}${overdue ? ' status-overdue' : ''}`}>{overdue ? 'Overdue' : task.status}</span>}
+        {!compact && !completed && (
+          <div className="task-actions">
+            <button className="task-primary-action" onClick={() => needsReschedule ? onPostpone(task) : started ? onComplete(task) : onStart(task)}>
+              {needsReschedule ? 'Reschedule' : started ? <><Check size={13} /> Complete</> : <>Start</>}
+            </button>
+            <div className="task-menu-wrap" ref={menuRef}>
+              <button className="icon-button light" title="More task actions" aria-label={`More actions for ${task.title}`} onClick={() => setMenuOpen(!menuOpen)}><MoreHorizontal size={17} /></button>
+              {menuOpen && (
+                <div className="task-menu">
+                  <button onClick={() => { setMenuOpen(false); onPostpone(task); }}>Reschedule to tomorrow</button>
+                  <button onClick={() => { setMenuOpen(false); onEdit(task); }}>Edit task</button>
+                  <button className="danger" onClick={() => { setMenuOpen(false); onDelete(task); }}>Delete task</button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {!compact && completed && <span className="completed-mark"><Check size={14} /> Done</span>}
+      </div>
+
+      {/* NEW: This block finally renders the Gemini AI breakdown */}
+      {task.microSteps && task.microSteps.length > 0 && (
+        <div style={{ padding: '12px 14px', backgroundColor: 'var(--bg-inset, rgba(0,0,0,0.03))', borderRadius: '6px', borderLeft: '3px solid #6366f1', marginTop: '4px' }}>
+          <strong style={{ fontSize: '0.85rem', color: '#6366f1', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <Sparkles size={14} /> AI Breakdown
+          </strong>
+          <ul style={{ margin: 0, paddingLeft: '24px', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {task.microSteps.map((step, idx) => (
+              <li key={idx}>
+                {step.title} <span style={{ opacity: 0.6, fontSize: '0.85rem' }}>({step.timeEstimate} min)</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  ); 
+}
 
 function InterventionCard({ item, onRespond, tasks = [] }) { 
   if (!item) return null; 
