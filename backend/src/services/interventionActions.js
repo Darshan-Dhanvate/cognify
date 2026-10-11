@@ -18,13 +18,23 @@ async function decompose(task) {
 export async function executeIntervention(userId, id) {
   const intervention = await Intervention.findOne({ _id: id, user: userId, status: 'offered' });
   if (!intervention) return null;
+  
   const taskIds = intervention.recommendation?.taskIds || [];
   const tasks = await Task.find({ _id: { $in: taskIds }, user: userId, status: { $ne: 'Completed' } });
+  
   let result;
-  if (intervention.type === 'task_decomposition' && tasks[0]) result = { steps: await decompose(tasks[0]), taskId: tasks[0]._id };
-  else if (intervention.type === 'schedule_review') result = { taskIds: tasks.map(task => task._id), message: 'Review these low-priority tasks before changing their dates.' };
-  else result = { taskIds: tasks.slice(0, 2).map(task => task._id), message: 'Essential focus set prepared. Other tasks remain available.' };
-  intervention.status = 'accepted'; intervention.userResponseAt = new Date(); await intervention.save();
+  if (intervention.type === 'task_decomposition' && tasks.length > 0) {
+    result = { steps: await decompose(tasks[0]), taskId: tasks[0]._id };
+  } else if (intervention.type === 'schedule_review') {
+    result = { taskIds: tasks.map(task => task._id), message: 'Review these low-priority tasks before changing their dates.' };
+  } else {
+    result = { taskIds: tasks.slice(0, 2).map(task => task._id), message: 'Essential focus set prepared. Other tasks remain available.' };
+  }
+  
+  intervention.status = 'accepted'; 
+  intervention.userResponseAt = new Date(); 
+  await intervention.save();
+  
   await recordEvent({ user: userId, eventType: 'intervention_accepted', metadata: { interventionId: id, type: intervention.type } });
   return { intervention, result };
 }
