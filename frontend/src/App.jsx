@@ -170,7 +170,33 @@ function TaskManager({ tasks, actions }) {
 
 function Focus({ tasks, ids, actions, onExit }) { const selected = ids.length ? tasks.filter(task => ids.includes(task._id)) : []; return <div className="stack"><section className="focus-hero"><span className="kicker">FOCUS PLAN</span><h2>{selected.length ? 'A short list for right now.' : 'No focus plan yet.'}</h2><p>{selected.length ? 'This is a temporary plan generated from a Cognify intervention. It does not delete, hide, or change the rest of your tasks.' : 'Cognify creates a focus plan only when workload pressure calls for one. Your normal task list remains in Tasks.'}</p></section><section className="panel"><div className="section-heading"><div><span className="kicker">{selected.length ? 'YOUR NEXT STEPS' : 'HOW IT WORKS'}</span><h3>{selected.length ? 'Work on these first' : 'Keep working from Tasks'}</h3></div></div>{selected.length ? selected.map(task => <TaskRow key={task._id} task={task} onStart={actions.start} onComplete={actions.complete} onPostpone={actions.postpone} />) : <Empty text="No intervention-generated focus plan is active." />}<button className="button button-secondary" onClick={onExit}>Return to all tasks</button></section></div>; }
 
-function Review({ tasks, ids, actions, onExit }) { const candidates = tasks.filter(task => ids.includes(task._id)); return <div className="stack"><section className="panel"><span className="kicker">SCHEDULE REVIEW</span><h2>Choose what can wait.</h2><p className="muted">This review appears when workload pressure is high. Move low-priority tasks to a date you can realistically handle. Nothing changes until you choose a date.</p>{candidates.length ? candidates.map(task => <div className="review-row" key={task._id}><div className="task-copy"><strong>{task.title}</strong><span>Current date: {task.scheduledDate ? new Date(task.scheduledDate).toLocaleDateString() : 'unscheduled'}</span></div><input type="date" defaultValue={task.scheduledDate ? new Date(task.scheduledDate).toISOString().slice(0, 10) : ''} onChange={e => e.target.value && actions.update(task._id, { scheduledDate: e.target.value })} /></div>) : <Empty text="No tasks are waiting for schedule review." />}<button className="button button-secondary" onClick={onExit}>Return to overview</button></section></div>; }
+function Review({ tasks, ids, actions, onExit }) { 
+  const candidates = tasks.filter(task => ids.includes(task._id)); 
+  return (
+    <div className="stack">
+      <section className="panel">
+        <span className="kicker">SCHEDULE REVIEW</span>
+        <h2>Choose what can wait.</h2>
+        <p className="muted">This review appears when workload pressure is high. Move low-priority tasks to a date you can realistically handle. Nothing changes until you choose a date.</p>
+        
+        {candidates.length ? candidates.map(task => (
+          <div className="review-row" key={task._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+            <div className="task-copy">
+              <strong>{task.title}</strong>
+              <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Current date: {task.scheduledDate ? new Date(task.scheduledDate).toLocaleDateString() : 'unscheduled'}
+              </span>
+            </div>
+            <input type="date" style={{ padding: '6px', borderRadius: '4px', border: '1px solid var(--border)' }} defaultValue={task.scheduledDate ? new Date(task.scheduledDate).toISOString().slice(0, 10) : ''} onChange={e => e.target.value && actions.update(task._id, { scheduledDate: e.target.value })} />
+          </div>
+        )) : <Empty text="No tasks are waiting for schedule review." />}
+        
+        {/* FIX: Make this an obvious primary action button */}
+        <button className="button button-primary" style={{ marginTop: '20px' }} onClick={onExit}>Finish & Recalculate</button>
+      </section>
+    </div>
+  ); 
+}
 
 function Calendar({ tasks, actions }) {
   const [cursor, setCursor] = useState(() => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1); });
@@ -275,7 +301,7 @@ export default function App() {
         {tab === 'overview' && <Overview {...shared} risk={risk} intervention={intervention} onRefresh={refresh} onOpen={setTab} onRespond={respond} />}
         {tab === 'tasks' && <TaskManager {...shared} />}
         {tab === 'focus' && <Focus {...shared} ids={focusIds} onExit={() => setTab('tasks')} />}
-        {tab === 'review' && <Review {...shared} ids={reviewIds} onExit={() => setTab('overview')} />}
+        {tab === 'review' && <Review {...shared} ids={reviewIds} onExit={async () => { await refresh(); setReviewIds([]); setTab('overview'); }} />}
         {tab === 'calendar' && <Calendar {...shared} />}
         {tab === 'journal' && <Journal journals={journals} onCreate={journal} />}
         {tab === 'analytics' && <Analytics risk={risk} history={history} interventions={interventions} tasks={tasks} />}
