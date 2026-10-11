@@ -22,9 +22,78 @@ function RiskCard({ risk, onRefresh }) { const score = risk?.riskScore; const le
 
 function TaskRow({ task, onStart, onComplete, onPostpone, onEdit, onDelete, compact = false }) { const [menuOpen, setMenuOpen] = useState(false); const menuRef = useRef(null); const completed = task.status === 'Completed'; const started = task.status === 'In-Progress'; const dueKey = dateKey(task.dueDate || task.scheduledDate); const overdue = !completed && dueKey && dueKey < todayKey(); const needsReschedule = overdue && !started; useEffect(() => { if (!menuOpen) return undefined; const close = event => { if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false); }; document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close); }, [menuOpen]); return <div className="task-row"><div className="task-copy"><strong>{task.title}</strong><span>{task.priority || 'medium'} {task.estimatedTotalMinutes ? `· ${task.estimatedTotalMinutes} min` : ''}{task.scheduledDate ? ` · ${formatDate(task.scheduledDate)}` : ''}{overdue ? ' · overdue' : ''}</span></div>{!compact && <span className={`status-pill status-${task.status.toLowerCase().replace('-', '')}${overdue ? ' status-overdue' : ''}`}>{overdue ? 'Overdue' : task.status}</span>}{!compact && !completed && <div className="task-actions"><button className="task-primary-action" onClick={() => needsReschedule ? onPostpone(task) : started ? onComplete(task) : onStart(task)}>{needsReschedule ? 'Reschedule' : started ? <><Check size={13} /> Complete</> : <>Start</>}</button><div className="task-menu-wrap" ref={menuRef}><button className="icon-button light" title="More task actions" aria-label={`More actions for ${task.title}`} onClick={() => setMenuOpen(!menuOpen)}><MoreHorizontal size={17} /></button>{menuOpen && <div className="task-menu"><button onClick={() => { setMenuOpen(false); onPostpone(task); }}>Reschedule to tomorrow</button><button onClick={() => { setMenuOpen(false); onEdit(task); }}>Edit task</button><button className="danger" onClick={() => { setMenuOpen(false); onDelete(task); }}>Delete task</button></div>}</div></div>}{!compact && completed && <span className="completed-mark"><Check size={14} /> Done</span>}</div>; }
 
-function InterventionCard({ item, onRespond }) { if (!item) return null; return <section className="intervention-banner"><div className="intervention-icon"><Sparkles size={18} /></div><div className="intervention-copy"><span className="kicker">A SMALL ADJUSTMENT</span><h3>{item.recommendation?.title}</h3><p>Based on a current estimate of {Math.round(item.triggerRisk)}%. Nothing changes until you choose.</p></div><div className="intervention-actions"><button className="button button-primary" onClick={() => onRespond(item._id, 'accepted')}>Use this plan</button><button className="link-button" onClick={() => onRespond(item._id, 'dismissed')}>Not now</button></div></section>; }
+function InterventionCard({ item, onRespond, tasks = [] }) { 
+  if (!item) return null; 
+  
+  // NEW: Map the backend IDs to the actual task objects to show the user
+  const targetedTasks = (item.recommendation?.taskIds || [])
+    .map(id => tasks.find(t => t._id === id))
+    .filter(Boolean);
 
-function Overview({ tasks, risk, intervention, onRefresh, onOpen, onRespond, actions }) { const activeTasks = tasks.filter(task => task.status !== 'Completed'); const workingSet = activeTasks.slice(0, 5); const completed = tasks.length - activeTasks.length; const today = activeTasks.filter(task => dateKey(task.scheduledDate) === todayKey()).length; return <div className="stack"><div className="overview-grid"><RiskCard risk={risk} onRefresh={onRefresh} /><section className="panel welcome-panel"><span className="kicker">TODAY</span><h2>Make the next move obvious.</h2><p className="muted">A short working set is easier to start and easier to finish.</p><button className="button button-secondary" onClick={() => onOpen('tasks')}>Open tasks <ChevronRight size={15} /></button><div className="stat-strip"><div><strong>{activeTasks.length}</strong><span>active tasks</span></div><div><strong>{today}</strong><span>scheduled today</span></div><div><strong>{completed}</strong><span>completed</span></div></div></section></div><InterventionCard item={intervention} onRespond={onRespond} /><section className="panel"><div className="section-heading"><div><span className="kicker">WORKING SET</span><h3>Next in line</h3><p className="section-help">A preview of up to five active tasks. Your full list is in Tasks.</p></div><button className="link-button" onClick={() => onOpen('tasks')}>View all</button></div>{workingSet.length ? workingSet.map(task => <TaskRow key={task._id} task={task} onStart={actions.start} onComplete={actions.complete} onPostpone={actions.postpone} compact />) : <Empty text="No active tasks yet." />}</section></div>; }
+  return (
+    <section className="intervention-banner">
+      <div className="intervention-icon"><Sparkles size={18} /></div>
+      <div className="intervention-copy">
+        <span className="kicker">A SMALL ADJUSTMENT</span>
+        <h3>{item.recommendation?.title}</h3>
+        <p>Based on a current estimate of {Math.round(item.triggerRisk)}%. Nothing changes until you choose.</p>
+        
+        {/* NEW: Display the target tasks so the user isn't guessing */}
+        {targetedTasks.length > 0 && (
+          <div style={{ marginTop: '12px', padding: '10px 14px', backgroundColor: 'rgba(0,0,0,0.04)', borderRadius: '6px', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+            <strong>{item.type === 'task_decomposition' ? 'Target task:' : 'Selected tasks:'} </strong>
+            {targetedTasks.map(t => t.title).join(' • ')}
+          </div>
+        )}
+      </div>
+      <div className="intervention-actions">
+        <button className="button button-primary" onClick={() => onRespond(item._id, 'accepted')}>Use this plan</button>
+        <button className="link-button" onClick={() => onRespond(item._id, 'dismissed')}>Not now</button>
+      </div>
+    </section>
+  ); 
+}
+
+function Overview({ tasks, risk, intervention, onRefresh, onOpen, onRespond, actions }) { 
+  const activeTasks = tasks.filter(task => task.status !== 'Completed'); 
+  const workingSet = activeTasks.slice(0, 5); 
+  const completed = tasks.length - activeTasks.length; 
+  const today = activeTasks.filter(task => dateKey(task.scheduledDate) === todayKey()).length; 
+  
+  return (
+    <div className="stack">
+      <div className="overview-grid">
+        <RiskCard risk={risk} onRefresh={onRefresh} />
+        <section className="panel welcome-panel">
+          <span className="kicker">TODAY</span>
+          <h2>Make the next move obvious.</h2>
+          <p className="muted">A short working set is easier to start and easier to finish.</p>
+          <button className="button button-secondary" onClick={() => onOpen('tasks')}>Open tasks <ChevronRight size={15} /></button>
+          <div className="stat-strip">
+            <div><strong>{activeTasks.length}</strong><span>active tasks</span></div>
+            <div><strong>{today}</strong><span>scheduled today</span></div>
+            <div><strong>{completed}</strong><span>completed</span></div>
+          </div>
+        </section>
+      </div>
+      
+      {/* NEW: We pass the full tasks array into the InterventionCard here */}
+      <InterventionCard item={intervention} onRespond={onRespond} tasks={tasks} />
+      
+      <section className="panel">
+        <div className="section-heading">
+          <div>
+            <span className="kicker">WORKING SET</span>
+            <h3>Next in line</h3>
+            <p className="section-help">A preview of up to five active tasks. Your full list is in Tasks.</p>
+          </div>
+          <button className="link-button" onClick={() => onOpen('tasks')}>View all</button>
+        </div>
+        {workingSet.length ? workingSet.map(task => <TaskRow key={task._id} task={task} onStart={actions.start} onComplete={actions.complete} onPostpone={actions.postpone} compact />) : <Empty text="No active tasks yet." />}
+      </section>
+    </div>
+  ); 
+}
 
 function TaskManager({ tasks, actions }) {
   const [filter, setFilter] = useState('active'); const [sort, setSort] = useState('newest'); const [draft, setDraft] = useState({ title: '', priority: 'medium', scheduledDate: '', estimatedTotalMinutes: '' }); const [editing, setEditing] = useState(null); const [editForm, setEditForm] = useState({ title: '', priority: 'medium', scheduledDate: '' });
