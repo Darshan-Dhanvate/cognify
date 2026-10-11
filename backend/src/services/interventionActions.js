@@ -6,7 +6,7 @@ import { recordEvent } from './events.js';
 async function decompose(task) {
   if (!process.env.GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured');
   
-  const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({ model: 'gemini-3.8-flash' });
   
   const prompt = `Break this work task into exactly 3 concrete steps, each taking 5 to 15 minutes. Return only JSON array of objects with a title field. Task: ${task.title}. Description: ${task.description || ''}`;
   const result = await model.generateContent(prompt);
