@@ -21,8 +21,12 @@ export async function offerForPrediction(prediction) {
 
   let type, recommendation;
 
-  // Find massive tasks, but IGNORE low-priority ones
-  const largeImportantTasks = tasks.filter(t => t.priority !== 'low' && ((t.estimatedTotalMinutes || 0) >= 120 || t.isOverwhelming));
+  // Find massive tasks, but IGNORE low-priority ones AND ones that are already decomposed
+  const largeImportantTasks = tasks.filter(t => 
+    t.priority !== 'low' && 
+    ((t.estimatedTotalMinutes || 0) >= 120 || t.isOverwhelming) &&
+    (!t.microSteps || t.microSteps.length === 0)
+  );
 
   // 1. FOCUS MODE: Extreme risk. Pick the 2 most urgent, highest priority tasks.
   if (prediction.riskScore >= 85) {
