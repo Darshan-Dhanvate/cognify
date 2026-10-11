@@ -9,7 +9,7 @@ export async function createJournal(req, res) {
   if (!content) return res.status(400).json({ message: 'Journal content is required' });
   let analysis = null;
   if (req.user.journalAnalysisEnabled !== false) try {
-    const response = await axios.post(`${process.env.ML_SERVICE_URL || 'http://127.0.0.1:8081'}/journal/analyze`, { content }, { timeout: 8000 });
+    const response = await axios.post(`${process.env.ML_SERVICE_URL || 'http://127.0.0.1:8081'}/journal/analyze`, { content }, { timeout: 60000 });
     analysis = response.data;
   } catch (error) {
     console.warn(`Journal NLP skipped: ${error.message}`);
